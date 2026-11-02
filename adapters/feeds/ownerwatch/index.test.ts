@@ -14,7 +14,7 @@ const mapping = {
 const row = (id: string, name: string) => ({ id, name, category: 'lending' })
 
 describe('ownerwatch adapter', () => {
-  it('returns both counts verbatim, one detail per watched contract, the build date and the facts', async () => {
+  it('returns both counts verbatim, one detail per watched contract, the date of the last event and the facts', async () => {
     const ctx = fakeContext(responses, { mapping })
     const prepared = await adapter.prepare!(ctx)
     const result = await adapter.collect({ protocol: row('aave-v3', 'Aave v3'), ctx, prepared })
@@ -39,7 +39,7 @@ describe('ownerwatch adapter', () => {
     })
     expect(result?.extra?.facts).toEqual([
       { name: 'Governance system', value: 'Aave Governance V3' },
-      { name: 'Window', value: '90 days from 2026-07-30' },
+      { name: 'Window', value: '90 days' },
       { name: 'Last counted event', value: '2026-10-28' },
       {
         name: 'Contract addresses from',
@@ -60,6 +60,25 @@ describe('ownerwatch adapter', () => {
     })
     expect(result?.value).toBe('2 control changes in 90 days')
     expect(result?.note).toMatch(/^Governed through Safes/)
+  })
+
+  it('dates a record by its last event, so the daily rebuild does not touch it', async () => {
+    const ctx = fakeContext(responses, { mapping })
+    const prepared = await adapter.prepare!(ctx)
+    const result = await adapter.collect({
+      protocol: row('balancer-v2', 'Balancer v2'),
+      ctx,
+      prepared,
+    })
+    expect(result?.updatedAt).toBe('2026-09-10')
+    prepared['balancer-v2'] = {
+      ...prepared['balancer-v2']!,
+      updatedAt: '2030-01-01',
+      window: { days: 90, from: '2029-10-03' },
+    }
+    expect(
+      await adapter.collect({ protocol: row('balancer-v2', 'Balancer v2'), ctx, prepared }),
+    ).toEqual(result)
   })
 
   it('returns the note and no value where ownerwatch cannot decode the governance events yet', async () => {

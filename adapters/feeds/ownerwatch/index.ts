@@ -44,7 +44,8 @@ const factsOf = (entry: Entry): Detail[] =>
   (
     [
       { name: 'Governance system', value: entry.name },
-      { name: 'Window', value: `${entry.window.days} days from ${entry.window.from}` },
+      // The window's start moves every day, so it stays out of the record: a record changes when its data does.
+      { name: 'Window', value: `${entry.window.days} days` },
       { name: 'Last counted event', value: entry.lastEvent },
       { name: 'Contract addresses from', value: entry.source },
     ] as { name: string; value: string | null }[]
@@ -83,7 +84,7 @@ const adapter: FeedAdapter<Record<string, Entry>> = {
 
     return {
       value: entry.value,
-      updatedAt: entry.updatedAt,
+      ...(entry.lastEvent ? { updatedAt: entry.lastEvent } : {}),
       url: entry.url,
       details: detailsOf(entry),
       ...(entry.note ? { note: entry.note } : {}),
